@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="stylesheet" href="./styleDashboard.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+  <title>Dashboard WiFi</title>
+</head>
+
+<body>
+  <!-- ===== HEADER ===== -->
+  <header>
+    <div class="header-title">Dashboard Usuarios</div>
+    <div id="adminWelcome" class="admin-welcome">
+      <div id="adminIcon" class="admin-icon">
+        <img src="./img/iconoAdministrador.png" alt="Icono Administrador">
+      </div>
+      <div class="notification-container">
+        <div class="notification-bell" id="notificationBell">
+          <svg class="bell-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+            fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span class="notification-counter" style="display: none;">0</span>
+        </div>
+        <div class="notification-dropdown" id="notificationDropdown">
+          <div class="dropdown-header">
+            <h3>Notificaciones</h3>
+            <button class="mark-all-read">Marcar todas como leídas</button>
+          </div>
+          <div class="notification-scroll">
+            <!-- Las notificaciones se cargarán dinámicamente aquí -->
+          </div>
+          <div class="dropdown-footer">
+            <a href="./verNotificaciones.html" class="view-all">Ver todas las notificaciones</a>
+          </div>
+        </div>
+      </div>
+      <span id="adminName"></span>
+    </div>
+    <div class="header-buttons">
+      <button class="logout-mobile" onclick="logout()">🚪</button>
+      <div class="menu-icon" onclick="toggleSidebar()">☰</div>
+    </div>
+  </header>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const adminName = localStorage.getItem('adminName');
+      if (adminName) {
+        document.getElementById('adminName').textContent = `Bienvenido, ${adminName}`;
+        document.getElementById('adminWelcome').style.display = 'flex';
+        const adminIcon = document.getElementById('adminIcon');
+        if (adminIcon) {
+          adminIcon.classList.add('admin-icon-success');
+        }
+      }
+    });
+
+    function logout() {
+      const adminIcon = document.getElementById('adminIcon');
+      if (adminIcon) {
+        adminIcon.classList.add('admin-icon-logout');
+        setTimeout(() => {
+          localStorage.removeItem('adminName');
+          window.location.href = 'loginAdmin.html';
+        }, 1500);
+      } else {
+        window.location.href = 'loginAdmin.html';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      // Elementos clave
+      const adminNameElement = document.getElementById('adminName');
+      if (!adminNameElement) return;
+
+      // Crear el div morado con el nombre del admin
+      const createResponsiveAdminBar = () => {
+        if (!document.querySelector('.admin-responsive-bar')) {
+          const adminName = adminNameElement.textContent.trim() || 'Administrador';
+          const adminBar = document.createElement('div');
+          adminBar.className = 'admin-responsive-bar';
+          adminBar.innerHTML = `
+                    <div class="admin-bar-content">
+                        <marquee><span class="admin-name">${adminName}</span></marquee>
+                    </div>
+                `;
+
+          // Insertar antes de la sección de Gestión de Perfiles
+          const gestionPerfiles = document.getElementById('gestionPerfiles');
+          if (gestionPerfiles) {
+            gestionPerfiles.parentNode.insertBefore(adminBar, gestionPerfiles);
+          }
+        }
+      };
+
+      // Control de visibilidad basado en tamaño de pantalla
+      const handleResponsiveLayout = () => {
+        const screenWidth = window.innerWidth;
+        const breakpoint = 768;
+        const adminBar = document.querySelector('.admin-responsive-bar');
+
+        if (screenWidth <= breakpoint) {
+          // Pantalla pequeña: mostrar barra, ocultar nombre en header
+          if (!adminBar) createResponsiveAdminBar();
+          adminNameElement.style.display = 'none';
+        } else {
+          // Pantalla grande: ocultar barra, mostrar nombre en header
+          if (adminBar) adminBar.remove();
+          adminNameElement.style.display = '';
+        }
+      };
+
+      // Estilos dinámicos con altura de 3cm
+      const style = document.createElement('style');
+      style.textContent = `
+            .admin-responsive-bar {
+                height: 3cm; /* Altura aumentada a 3cm */
+                min-height: 40px; /* Altura mínima para navegadores antiguos */
+                width: calc(100% - 30px);
+                margin: 0 15px 25px 15px;
+                background: linear-gradient(135deg, #8e24aa, #d81b60); /* Degradado más vibrante */
+                border-radius: 12px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.25);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+                z-index: 10;
+                transition: all 0.3s ease;
+            }
+            .admin-bar-content {
+                width: 100%;
+                text-align: center;
+                padding: 0 30px;
+            }
+            .admin-name {
+                color: white;
+                font-size: 1.6rem; /* Texto más grande */
+                font-weight: 700;
+                text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
+                display: inline-block;
+                letter-spacing: 0.8px;
+            }
+            
+            /* Responsive */
+            @media (max-width: 900px) {
+                .admin-name {
+                    font-size: 1.5rem;
+                }
+            }
+            @media (max-width: 768px) {
+                .admin-responsive-bar {
+                    margin-bottom: 20px;
+                }
+            }
+            @media (max-width: 650px) {
+                .admin-responsive-bar {
+                    height: 2.5cm;
+                    border-radius: 10px;
+                }
+                .admin-name {
+                    font-size: 1.4rem;
+                }
+            }
+            @media (max-width: 480px) {
+                .admin-responsive-bar {
+                    height: 2cm;
+                    margin: 0 10px 15px 10px;
+                    border-radius: 8px;
+                }
+                .admin-name {
+                    font-size: 1.3rem;
+                    letter-spacing: 0.5px;
+                }
+                .admin-bar-content {
+                    padding: 0 20px;
+                }
+            }
+        `;
+      document.head.appendChild(style);
+
+      // Observador para cambios en el nombre
+      const nameObserver = new MutationObserver(() => {
+        const adminBarName = document.querySelector('.admin-name');
+        if (adminBarName) {
+          adminBarName.textContent = adminNameElement.textContent.trim() || 'Administrador';
+        }
+      });
+      nameObserver.observe(adminNameElement, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+
+      // Event listeners
+      window.addEventListener('resize', handleResponsiveLayout);
+      // Inicialización
+      handleResponsiveLayout();
+    });
+  </script>
+
+  <div class="container">
+    <!-- ===== SIDEBAR ===== -->
+    <div class="sidebar" id="sidebar">
+      <img src="img/fondo_circulo_logo.png" alt="Logo matriciano" class="logo_enSidebar">
+      <a href="#gestionPerfiles" onclick="setActive(this)">Gestion de Roles</a>
+      <a href="#visualizarTablas" onclick="setActive(this)">Visualizar Tablas</a>
+      <a href="#cambioCredenciales" onclick="setActive(this)">Cambiar Credenciales</a>
+      <a href="#usuariosConectadosRed" onclick="setActive(this)">Usuarios Conectados a la Red</a>
+      <a href="#limiteUsuariosRed" onclick="setActive(this)">Máximo de Usuarios en la Red</a>
+      <a href="#metricasRed" onclick="setActive(this)">Métricas de Uso de la Red</a>
+      <a href="#configuracionesWifi" onclick="setActive(this)">Configuraciones de la Red Wifi</a>
+      <button class="logout-button" onclick="logout()">🚪 Cerrar Sesión</button>
+    </div>
+
+    <!-- ===== CONTENIDO PRINCIPAL ===== -->
+    <div class="content">
+
+      <!-- Gestión de Roles -->
+      <div id="gestionPerfiles" class="card-perfiles">
+        <h1>Gestión de Roles</h1>
+        <div class="perfil-lista">
+          <button onclick="mostrarFormulario('usuario')">Usuario</button>
+          <button onclick="mostrarFormulario('admin')">Administrador</button>
+        </div>
+        <br>
+        <!-- Formulario dinámico -->
+        <div id="formularioUsuario"></div>
+      </div>
+
+      <!-- Visualizar tablas -->
+      <div id="visualizarTablas" class="card-perfiles">
+        <h1>Visualizar Tablas</h1>
+        <div class="perfil-lista">
+          <button onclick="verTablaUsuarios()">Tabla Usuarios</button>
+          <button onclick="verTablaAdmin()">Tabla Administrador</button>
+        </div>
+        <!-- Contenedor para mostrar la tabla de usuarios -->
+        <div id="tablaUsuarios"></div>
+        <!-- Contenedor para mostrar la tabla de administradores -->
+        <div id="tablaAdministradores"></div>
+      </div>
+
+      <!-- Cambio de Credenciales -->
+      <div id="cambioCredenciales" class="card-perfiles">
+        <h1>Cambiar Credenciales</h1>
+        <div class="perfil-lista">
+          <button onclick="cambioUsuarios()">Para Usuario</button>
+          <button onclick="cambioAdmin()">Para Administrador</button>
+        </div>
+        <!-- Contenedor para mostrar el div blanco -->
+        <div id="divUsuario" class="div-blanco">
+          <h2 id="cambioCredencialesUsuario">🔑 Cambio de credenciales para Usuario 👨🏻‍💼</h2>
+          <div class="ingresaID">
+            <label for="userId" class="label-negro">Ingresa el ID que desea cambiar las credenciales:</label>
+            <input type="text" id="userId" name="userId" placeholder="ID de Usuario">
+            <button onclick="buscarUsuario()">Buscar</button>
+          </div>
+          <div class="user-info">
+            <div class="user-info-field">
+              <label for="nombreUsuario" class="label-negro">Nombre:</label>
+              <input type="text" id="nombreUsuario" placeholder="Nombre" readonly>
+            </div>
+            <div class="user-info-field">
+              <label for="fechaNacimientoUsuario" class="label-negro">Fecha Nacimiento:</label>
+              <input type="date" id="fechaNacimientoUsuario" placeholder="Fecha Nacimiento" readonly>
+            </div>
+            <div class="user-info-field">
+              <label for="correoUsuario" class="label-negro">Correo:</label>
+              <input type="text" id="correoUsuario" placeholder="Correo" readonly>
+            </div>
+            <div class="user-info-field">
+              <label for="telefonoUsuario" class="label-negro">Celular:</label>
+              <input type="text" id="telefonoUsuario" placeholder="Celular" readonly>
+            </div>
+          </div>
+          <br>
+          <div class="botones-crud">
+            <button onclick="editarUsuario()">Editar</button>
+            <button onclick="actualizarUsuario()">Actualizar</button>
+            <button onclick="borrarUsuario()">Borrar</button>
+            <button onclick="cerrarDivUsuario()">Cerrar</button>
+          </div>
+        </div>
+        <!-- Contenedor para mostrar el div blanco para administradores -->
+        <div id="divAdmin" class="div-blanco2">
+          <h2 id="cambioCredencialesAdmin">🔑 Cambio de credenciales para Administrador 💻</h2>
+          <div class="ingresaID">
+            <label for="adminId" class="label-negro">Ingresa el ID que desea cambiar las credenciales:</label>
+            <input type="text" id="adminId" name="adminId" placeholder="ID de Administrador">
+            <button onclick="buscarAdmin()">Buscar</button>
+          </div>
+          <div class="admin-info">
+            <div class="admin-info-field">
+              <label for="nombreAdmin" class="label-negro">Nombre:</label>
+              <input type="text" id="nombreAdmin" placeholder="Nombre" readonly>
+            </div>
+            <div class="admin-info-field">
+              <label for="correoAdmin" class="label-negro">Correo:</label>
+              <input type="text" id="correoAdmin" placeholder="Correo" readonly>
+            </div>
+            <div class="admin-info-field">
+              <label for="contrasenaAdmin" class="label-negro">Contraseña:</label>
+              <input type="text" id="contrasenaAdmin" placeholder="Contraseña" readonly>
+            </div>
+          </div>
+          <br>
+          <div class="botones-crud">
+            <button onclick="editarAdmin()">Editar</button>
+            <button onclick="actualizarAdmin()">Actualizar</button>
+            <button onclick="borrarAdmin()">Borrar</button>
+            <button onclick="cerrarDivAdmin()">Cerrar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="usuariosConectadosRed" class="card-perfiles">
+        <h1>Usuarios Conectados a la Red</h1>
+        <div class="perfil-lista">
+          <button class="metric-btn" onclick="toggleVista()">Usuarios Conectados</button>
+        </div>
+        <div class="contenedor-dispositivos">
+          <h2 class="text-center">Dispositivos en la Red Wi-Fi</h2>
+          <div id="search-container">
+            <input type="text" id="search-bar" placeholder="Buscar dispositivos...">
+            <button id="search-button">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nombre del Dispositivo</th>
+                <th>IP</th>
+                <th>MAC</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="device-list"></tbody>
+          </table><br>
+          <center>
+            <button class="btn-regresar" onclick="regresarUsuariosConectados()">Regresar</button>
+          </center>
+        </div>
+      </div>
+
+      <div id="limiteUsuariosRed" class="card-perfiles">
+        <h1>Máximo de Usuarios en la Red</h1>
+        <div class="perfil-lista horizontal-align">
+          <button class="metric-btn" onclick="aplicarLimite()">Aplicar Límite</button>
+          <div class="quick-stats">
+            <span class="stat-badge"><i class="fas fa-users"></i> <span id="currentUsers">0</span>/<span
+                id="maxAllowed">0</span></span>
+            <span class="status-dot" id="statusIndicator"></span>
+          </div>
+        </div>
+
+        <div id="limiteMaximoContainer" class="limiteMaximo">
+          <h2 class="text-center">Configuración Personalizada de Límites</h2>
+
+          <div class="tabs">
+            <button class="tab-btn active" onclick="openTab('basicTab')">Configuración Básica</button>
+            <button class="tab-btn" onclick="openTab('historyTab')">Historial</button>
+          </div>
+          <br>
+          <form id="limiteForm" class="limite-form">
+            <!-- Pestaña Básica -->
+            <div id="basicTab" class="tab-content active">
+              <div class="cards-container">
+                <div class="config-card">
+                  <h3><i class="fas fa-sliders-h"></i> Límites</h3>
+                  <div class="form-group">
+                    <label for="maxUsuarios">Máximo de usuarios:</label>
+                    <div class="input-with-actions">
+                      <input type="number" id="maxUsuarios" min="1" max="1000" class="form-control" required>
+                      <button type="button" class="input-btn" onclick="suggestOptimal()"><i class="fas fa-magic"></i>
+                        Sugerir</button>
+                    </div>
+                    <div class="range-slider">
+                      <input type="range" min="1" max="500" value="100" class="slider" id="maxRange"
+                        oninput="updateMaxInput()">
+                    </div>
+                  </div>
+
+                  <div class="form-group priority-options-container">
+                    <label for="priorityMode">Modo de prioridad:</label>
+                    <select id="priorityMode" class="form-control">
+                      <option value="fifo">Primero en entrar, primero en salir</option>
+                      <option value="priority">Por prioridad de actividad</option>
+                    </select>
+
+                    <div class="priority-options">
+                      <div class="option-rectangle fifo-option">
+                        <h4 class="option-title">Primero en entrar, primero en salir (FIFO)</h4>
+                        <p class="option-desc">Acceso por orden de llegada. Al alcanzar el límite, nuevos usuarios
+                          esperan disponibilidad.</p>
+                      </div>
+
+                      <div class="option-rectangle priority-option">
+                        <h4 class="option-title">Prioridad por actividad</h4>
+                        <p class="option-desc">Desconexión automática de usuarios inactivos para permitir acceso a
+                          nuevos usuarios activos.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="status-card">
+                  <h3><i class="fas fa-chart-line"></i> Estadísticas en Tiempo Real</h3>
+                  <div class="usuarios-info">
+                    <div class="usuarios-count" id="liveUserCount">0</div>
+                    <div class="usuarios-label">Usuarios activos ahora</div>
+                  </div>
+                  <div class="usage-meter">
+                    <div class="meter-bar" id="usageBar"></div>
+                    <div class="meter-text" id="usageText">0% de capacidad</div>
+                  </div>
+                  <div class="stats-grid">
+                    <div class="stat-item">
+                      <div class="stat-value" id="peakToday">0</div>
+                      <div class="stat-label">Máximo hoy</div>
+                    </div>
+                    <div class="stat-item">
+                      <div class="stat-value" id="avgUsage">0</div>
+                      <div class="stat-label">Promedio</div>
+                    </div>
+                  </div>
+                  <div class="last-update" id="lastUpdateTime">Actualizando datos...</div>
+                </div>
+              </div>
+
+              <div class="form-group check-group">
+                <input type="checkbox" id="notificar" checked>
+                <label for="notificar">Notificaciones en tiempo real</label>
+              </div>
+            </div>
+
+            <!-- Pestaña Historial -->
+            <div id="historyTab" class="tab-content">
+              <h3 style="color: black;"><i class="fas fa-history"></i> Historial de Cambios</h3>
+              <div class="history-container">
+                <div class="history-filters">
+                  <select class="form-control">
+                    <option>Últimos 7 días</option>
+                    <option>Este mes</option>
+                    <option>Personalizado</option>
+                  </select>
+                  <input type="text" class="form-control" placeholder="Buscar...">
+                </div>
+                <div class="history-list" id="historyList">
+                  <!-- Los elementos de historial se generarán con JS -->
+                </div>
+                <div class="history-pagination">
+                  <button type="button" class="page-btn"><i class="fas fa-chevron-left"></i></button>
+                  <span class="page-info">Página 1 de 1</span>
+                  <button type="button" class="page-btn"><i class="fas fa-chevron-right"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-footer">
+              <div class="form-actions">
+                <button type="button" class="btn-test" onclick="testSettings()"><i class="fas fa-vial"></i> Probar
+                  configuración</button>
+                <button type="submit" class="btn-confirmar"><i class="fas fa-save"></i> Guardar cambios</button>
+                <button type="button" class="btn-regresar" onclick="ocultarLimite()"><i class="fas fa-times"></i>
+                  Regresar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal de confirmación -->
+      <div id="confirmModal" class="modal-administrador" style="display: none;">
+        <div class="modal-administrador-content">
+          <div style="display: flex; justify-content: flex-end;">
+            <span class="close-modal" onclick="closeModal()"
+              style="font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
+          </div>
+          <h3 id="modalTitle" style="text-align: center; margin-top: 0;">Confirmar cambios</h3>
+          <p id="modalMessage" style="text-align: center;">¿Está seguro que desea aplicar estos cambios?</p>
+          <div class="modal-administrador-actions"
+            style="display: flex; justify-content: center; gap: 1rem; margin-top: 20px;">
+            <button class="btn-confirmar" onclick="confirmChanges()">Confirmar</button>
+            <button class="btn-regresar" onclick="closeModal()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="metricasRed" class="card-perfiles">
+        <h1>Métricas de Uso de la Red</h1>
+        <div class="perfil-lista">
+          <button class="metric-btn" onclick="visualizarMetricas()">Visualizar Metricas</button>
+        </div>
+        <div id="metricsDiv" class="metrics-box">
+          <h2 id="titulo-metricas">Métricas de la Red</h2>
+          <div class="metrics-container">
+            <!-- Sección de métricas principales -->
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-header">
+                  <svg class="metric-icon" viewBox="0 0 24 24">
+                    <path
+                      d="M12 3v18M8 7l4-4 4 4m-4 14a7 7 0 0 0 7-7h-2a5 5 0 0 1-5 5 5 5 0 0 1-5-5H5a7 7 0 0 0 7 7z" />
+                  </svg>
+                  <h3>Tipo de Conexión</h3>
+                </div>
+                <div class="metric-value" id="connectionType">Cargando...</div>
+                <div class="signal-strength">
+                  <div class="signal-bar active"></div>
+                  <div class="signal-bar active"></div>
+                  <div class="signal-bar active"></div>
+                  <div class="signal-bar active"></div>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-header">
+                  <svg class="metric-icon" viewBox="0 0 24 24">
+                    <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0 0v4m-4-4h4m8-8h4m-2 2l-2-2 2-2" />
+                  </svg>
+                  <h3>Velocidad Descarga</h3>
+                </div>
+                <div class="metric-value" id="downloadSpeed">Calculando... <span>Mbps</span></div>
+                <div class="progress-container">
+                  <div class="progress-bar" id="progressBar"></div>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-header">
+                  <svg class="metric-icon" viewBox="0 0 24 24">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                  </svg>
+                  <h3>Latencia</h3>
+                </div>
+                <div class="metric-value" id="latency">Calculando... <span>ms</span></div>
+                <div class="progress-container">
+                  <div class="progress-bar" id="progressBar"></div>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-header">
+                  <svg class="metric-icon" viewBox="0 0 24 24">
+                    <path
+                      d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                  </svg>
+                  <h3>Dispositivos</h3>
+                </div>
+                <div class="metric-value" id="devices">0 <span>conectados</span></div>
+                <div class="progress-container">
+                  <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="devices-list" id="devicesList"></div>
+              </div>
+            </div>
+
+            <!-- Gráfico principal -->
+            <div class="chart-container">
+              <h4>Ancho de Banda</h4>
+              <canvas id="bandwidthChart"></canvas>
+            </div>
+
+            <!-- Gráficos secundarios -->
+            <div class="secondary-charts">
+              <div class="small-chart">
+                <h4>Perdida de Paquetes</h4><br>
+                <canvas id="networkChart"></canvas>
+              </div>
+              <div class="small-chart">
+                <h4>Estabilidad de Conexión</h4>
+                <canvas id="stabilityChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Información adicional -->
+            <div class="network-info">
+              <div class="info-card">
+                <h4>Estado de Red</h4>
+                <div class="status-indicator online" id="statusIndicator">
+                  <span class="status-dot"></span>
+                  <span id="statusText"></span>
+                </div><br>
+                <hr>
+                <p id="statusMessage"></p>
+              </div>
+
+              <div class="info-card">
+                <h4>Seguridad</h4>
+                <div class="security-level high" id="securityLevel">
+                  <span id="securityText"></span>
+                </div><br>
+                <hr>
+                <p id="securityMessage"></p>
+              </div>
+
+              <div class="info-card">
+                <h4>Recomendación</h4>
+                <div class="recommendation" id="recommendation">
+                  <span></span>
+                </div><br>
+                <hr>
+                <p id="recommendationMessage">Mejor canal para tu ubicación</p>
+              </div>
+            </div>
+          </div><br>
+          <button class="btn-regresar" onclick="regresarMetricas()"
+            style="display: block; margin: 0 auto;">Regresar</button><br>
+        </div>
+      </div>
+
+      <div id="configuracionesWifi" class="card-perfiles">
+        <h1>Configuraciones de la Red Wifi</h1>
+        <div class="perfil-lista">
+          <button id="mostrarConfiguracionesWifi">Realizar Configuraciones</button>
+        </div>
+        <div id="cambiosHechos">
+          <div class="cambioConfiguracionesWifi" style="display: none;">
+            <h2 id="titulo-metricas">Configuracion Actual de la Red Wifi</h2>
+            <!-- Información de la red -->
+            <div class="card">
+              <h3>Información de la Red</h3>
+              <div class="grid-info">
+                <div class="datos-red">
+                  <div class="dato"><strong>Nombre de la red (SSID):</strong> <span id="wifiSSID">Cargando...</span>
+                  </div>
+                  <div class="dato"><strong>Estado de la conexión:</strong> <span class="conectadoUnico"
+                      id="verEstado">Cargando...</span></div>
+                  <div class="dato"><strong>Tipo de seguridad:</strong> <span id="tipoSeguridad">Escaneando...</span>
+                  </div>
+                  <div class="dato"><strong>Dirección IP:</strong> <span id="obtenerIP">Buscando...</span></div>
+                  <div class="dato"><strong>Dirección MAC:</strong> <span id="obtenerMAC">Buscando...</span></div>
+                  <div class="dato"><strong>Canal y frecuencia:</strong> <span
+                      id="canal-frecuencia">Escaneando...</span></div>
+                  <div class="dato"><strong>Velocidad de enlace:</strong> <span id="velocidad-enlace">Cargando...</span>
+                  </div>
+                  <div class="dato"><strong>Ancho de banda:</strong> <span id="ancho-banda">Cargando...</span></div>
+                  <div class="dato"><strong>Protocolo de red:</strong> <span id="protocolo-ver">Cargando...</span></div>
+                  <div class="dato"><strong>Dispositivos conectados:</strong> <span class="conectadoUnico"
+                      id="conectadosRouter">0</span></div>
+                </div>
+                <div class="imagen-red">
+                  <img src="img/Router-Empresa.png" alt="Router Empresa" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Modificar configuración de red -->
+            <div class="card">
+              <h3>Modificar Configuración de Red</h3>
+              <div class="datos-actuales">
+                <div class="dato-actual">
+                  <span class="label-actual">Nombre SSID Actual</span>
+                  <div class="valor-actual" id="zona-wifiNombre">WIFI_prueba</div>
+                </div>
+                <div class="dato-actual">
+                  <span class="label-actual">Contraseña Actual</span>
+                  <div class="valor-actual password-field" id="zona-wifiPassword">
+                    ************
+                    <span class="toggle-password" onclick="togglePasswordActual()">
+                      <i class="bi bi-eye-fill" id="toggleIconActual"></i>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <form class="form-red">
+                <div class="input-wrap">
+                  <label>Nuevo SSID</label>
+                  <input type="text" placeholder="Ej: Oficina_2025" id="ingresarNuevoSSID" />
+                </div>
+                <div class="input-wrap input-password">
+                  <label>Nueva contraseña</label>
+                  <div class="password-field">
+                    <input type="password" id="passwordInput" placeholder="Ingrese nueva contraseña" />
+                    <span class="toggle-password" onclick="togglePassword()">
+                      <i class="bi bi-eye-fill" id="toggleIcon"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="btn-container">
+                  <button class="button-router">Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Opciones para el router -->
+            <div class="card">
+              <h3>Opciones para el Router</h3>
+              <div class="botones-router">
+                <div class="opcion-router">
+                  <p class="descripcion-opcion">Reinicia el router para aplicar cambios o solucionar errores.</p>
+                  <img src="img/reiniciar.png" alt="Reiniciar Router" class="icono-opcion" />
+                  <button class="btn-router reiniciar"><strong>Reiniciar Router</strong></button>
+                </div>
+                <div class="opcion-router">
+                  <p class="descripcion-opcion">Optimiza la señal wifi para un mejor rendimiento.</p>
+                  <img src="img/optimizarRed.png" alt="Optimizar Señal" class="icono-opcion" />
+                  <button class="btn-router optimizar"><strong>Optimizar Señal</strong></button>
+                </div>
+                <div class="opcion-router">
+                  <p class="descripcion-opcion">Activa el firewall para mayor seguridad de red.</p>
+                  <img src="img/firewall.png" alt="Activar Firewall" class="icono-opcion" />
+                  <button class="btn-router firewall"><strong>Activar Firewall</strong></button>
+                </div>
+              </div>
+            </div><br>
+            <center>
+              <button class="btn-regresar" onclick="salirDeConfiguracionWifi()">Regresar</button>
+            </center>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Modal de actualizaciones WIFI -->
+    <div id="modalConfirmacion" class="configWifi-modal hidden">
+      <div class="configWifi-card">
+        <button class="configWifi-close" onclick="cerrarModal()">✕</button>
+        <div class="configWifi-header">
+          <img src="img/fondo_circulo_logo.png" alt="Logo" class="configWifi-logo" />
+          <h2>Resumen de Configuración</h2>
+          <p>Verifica los datos antes de aplicar los cambios.</p>
+        </div>
+        <div class="configWifi-datos-grid">
+          <div class="configWifi-dato">
+            <label><i class="bi bi-wifi"></i> Nuevo SSID</label>
+            <div id="modalSSID" class="configWifi-dato-valor">-</div>
+          </div>
+          <div class="configWifi-dato">
+            <label><i class="bi bi-lock-fill"></i> Nueva Contraseña</label>
+            <div id="modalPassword" class="configWifi-dato-valor">-</div>
+          </div>
+        </div>
+        <button class="configWifi-confirmar-btn" onclick="confirmarCambios()">Aplicar Cambios</button>
+      </div>
+    </div>
+
+    <!-- Toast de éxito -->
+    <div id="toastSuccess" class="configWifi-toast hidden">
+      ✅ Cambios aplicados con éxito. 
+    </div>
+
+    <!-- MODAL REINICIAR ROUTER -->
+    <div id="modal-confirm-restart" class="modal-router">
+      <div class="modal-router-content">
+        <span class="modal-router-close" id="modal-close-btn">✕</span>
+        <img src="img/fondo_circulo_logo.png" alt="Logo" class="configWifi-logo" />
+        <h2 style="color: black;">¿Estás seguro de reiniciar el router?</h2>
+        <p style="color: black;">Al reiniciar el router, se restablecerá su configuración actual y es posible que pierdas 
+          la conexión temporalmente mientras se restablece la red.</p>
+        <button id="confirm-restart-btn" class="modal-restart-button">Reiniciar ahora</button>
+      </div>
+    </div>
+
+    <!-- Mensaje de reinicio de router -->
+    <div id="router-status-message" class="router-status-message" style="display: none;">
+      Reiniciando...
+    </div>
+    
+    <!-- Modal Optimizar WiFi -->
+    <div class="modal-optimizarWifi-overlay" id="modalOptimizarWifi">
+      <div class="modal-optimizarWifi-box">
+        <button class="modal-optimizarWifi-close" onclick="closeOptimizarWifiModal()">✕</button>
+        <img src="img/fondo_circulo_logo.png" alt="Logo" class="configWifi-logo" />
+        <h2 class="modal-optimizarWifi-title" style="color: black;">Optimizar WiFi</h2>
+
+        <div id="contenidoProgreso">
+          <div class="progress-optimizar">  
+            <div class="progress-barWifi" id="wifiProgressBar">
+              <span class="progress-text" id="progressText">0%</span>
+            </div>
+          </div>
+          <button class="start-optimization-btn" id="startOptimizationBtn">Optimizar</button>
+        </div>
+        
+        <!-- Contenido de éxito (oculto inicialmente) -->
+        <div id="contenidoFinal" style="display: none;">
+          <div class="resultado-final">
+            <img src="https://cdn-icons-png.flaticon.com/512/93/93158.png" alt="Completado" class="icono-completado">
+            <p class="texto-completado">¡Red WiFi optimizada con éxito!</p>
+            <button class="btn-cerrarMiWifi" onclick="closeOptimizarWifiModal()">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Firewall -->
+    <div class="modal-firewall-overlay" id="modalFirewall">
+      <div class="modal-firewall-box">
+        <button class="modal-firewall-close" onclick="closeFirewallModal()">✕</button>
+        <img src="img/fondo_circulo_logo.png" alt="Logo" class="configWifi-logo" />
+        <h2 class="modal-firewall-title" style="color: black;">Activar Firewall</h2>
+        <div>
+            <label class="switch">
+                <input type="checkbox" class="switch__input">
+                <span class="switch__track">
+                    <span class="switch__handle"></span>
+                    <span class="switch__label" data-off="OFF" data-on="ON">OFF</span>
+                </span>
+            </label>
+        </div>
+        <br>
+        <div class="modal-firewall-content">
+          Esperando activación del firewall...
+        </div>
+        <p id="descripcion-firewall" style="color: black;">Activa el Switch para configurar el firewall</p>
+      </div>
+    </div>
+    
+    <!-- ===== SCRIPTS ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="./opcionesDashboard.js"></script>
+</body>
+</html>
