@@ -314,17 +314,110 @@ app.post('/send_verification_code', async (req, res) => {
         const mailOptions = {
             from: `"Soporte MATRICIANO" <${process.env.GMAIL_USER}>`,
             to: email,
-            subject: 'Código de verificación para cambio de contraseña',
+            subject: '🔐 Código de Verificación MATRICIANO - Cambio de Contraseña',
             html: `
-                <div style="text-align: center;">
-                    <img src="cid:headerImage" alt="Logo" style="width:80px; height:80px;">
-                    <p>Se ha solicitado un cambio de contraseña. Tu código de verificación es: <strong>${token}</strong>.</p>
-                    <p>Este código expira en 5 minutos.</p>
+            <div style="
+                font-family: 'Poppins', Arial, sans-serif;
+                max-width: 600px;
+                margin: 0 auto;
+                background: #f8fafc;
+                padding: 0;
+                text-align: center;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 5px 25px rgba(0,0,0,0.1);
+            ">
+                <!-- Encabezado -->
+                <div style="
+                    background: linear-gradient(135deg, #1e6fdb, #00a8ff);
+                    padding: 40px 20px;
+                    color: white;
+                    border-bottom: 1px solid rgba(255,255,255,0.2);
+                ">
+                    <img src="cid:headerImage" alt="Logo MATRICIANO" style="width:95px; height:95px; margin: 0 auto 15px; display: block;">
+                    <h1 style="margin: 10px 0 5px; font-size: 26px; font-weight: 600;">Cambio de Contraseña</h1>
+                    <p style="margin: 0; opacity: 0.9; font-size: 15px;">Protegiendo tu acceso</p>
                 </div>
+                
+                <!-- Cuerpo -->
+                <div style="
+                    background: white;
+                    padding: 40px 30px;
+                    margin: 20px;
+                    border-radius: 10px;
+                    border: 1px solid #e0e6ff;
+                    box-shadow: 0 2px 15px rgba(30, 111, 219, 0.08);
+                ">
+                    <p style="margin-bottom: 10px; color: #555; font-size: 16px;">Estimado usuario,</p>
+                    <p style="margin-bottom: 25px; color: #555; font-size: 16px; line-height: 1.6;">
+                        Hemos recibido una solicitud para restablecer tu contraseña. Utiliza este código único:
+                    </p>
+                    
+                    <!-- Código de verificación -->
+                    <div style="
+                        background: #f5faff;
+                        color: #1e6fdb;
+                        font-size: 28px;
+                        font-weight: 700;
+                        padding: 20px;
+                        margin: 25px auto;
+                        border-radius: 8px;
+                        border: 2px solid #d6e7ff;
+                        letter-spacing: 3px;
+                        max-width: 280px;
+                        box-shadow: 0 3px 12px rgba(30, 111, 219, 0.12);
+                    ">
+                        ${token}
+                    </div>
+
+                    <!-- Alerta -->
+                    <div style="
+                        background: #fff8e6;
+                        color: #d97706;
+                        padding: 15px;
+                        border-radius: 8px;
+                        font-size: 15px;
+                        margin: 30px 0;
+                        border: 1px dashed #f59e0b;
+                        display: inline-block;
+                    ">
+                        ⏱️ Válido por 5 minutos | No compartas este código
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="
+                    background: linear-gradient(135deg, #1e6fdb, #00a8ff);
+                    padding: 35px 20px;
+                    color: white;
+                    font-size: 14px;
+                    text-align: center;
+                    border-top: 1px solid rgba(255,255,255,0.2);
+                ">
+                    <div style="max-width: 500px; margin: 0 auto;">
+                        <p style="margin: 10px 0; font-weight: 500;">
+                            © ${new Date().getFullYear()} MATRICIANO. Todos los derechos reservados.
+                        </p>
+
+                        <div style="margin: 20px 0;">
+                            <a href="" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Sitio Web</a>
+                            <span style="opacity: 0.5; font-weight: 300;"> | </span>
+                            <a href="mailto:" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Soporte</a>
+                            <span style="opacity: 0.5; font-weight: 300;"> | </span>
+                            <a href="" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Privacidad</a>
+                        </div>
+
+                        <p style="margin: 15px 0 0; color: white; line-height: 1.5; font-size: 13px;">
+                            Este mensaje fue enviado a <strong style="color: white;">${email}</strong><br>
+                            Por razones de seguridad, no reenvíes este correo.
+                        </p>
+                    </div>
+                </div>
+            </div>
             `,
             attachments: [
                 {
-                    filename: './img/fondo_circulo_logo.png',
+                    filename: 'logo_matriciano.png',
                     path: path.join(__dirname, 'public', './img/fondo_circulo_logo.png'),
                     cid: 'headerImage'
                 }
@@ -385,10 +478,89 @@ app.post('/update_password', async (req, res) => {
             to: email,
             subject: 'Contraseña reestablecida exitosamente',
             html: `
-                <div style="text-align: center;">
-                    <img src="cid:headerImage" alt="Logo" style="width:80px; height:80px;">
-                    <p style="font-size:18px; color:#007BFF;">Contraseña reestablecida como administrador exitosa 👍</p>
+            <div style="
+                font-family: 'Poppins', Arial, sans-serif;
+                max-width: 600px;
+                margin: 0 auto;
+                background: #f8fafc;
+                padding: 0;
+                text-align: center;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 5px 25px rgba(0,0,0,0.1);
+            ">
+                <!-- Encabezado -->
+                <div style="
+                    background: linear-gradient(135deg, #1e6fdb, #00a8ff);
+                    padding: 40px 20px;
+                    color: white;
+                    border-bottom: 1px solid rgba(255,255,255,0.2);
+                ">
+                    <img src="cid:headerImage" alt="Logo MATRICIANO" style="width:95px; height:95px; margin: 0 auto 15px; display: block;">
+                    <h1 style="margin: 10px 0 5px; font-size: 26px; font-weight: 600;">Contraseña Restablecida</h1>
+                    <p style="margin: 0; opacity: 0.9; font-size: 15px;">Has actualizado tu acceso</p>
                 </div>
+                
+                <!-- Cuerpo -->
+                <div style="
+                    background: white;
+                    padding: 40px 30px;
+                    margin: 20px;
+                    border-radius: 10px;
+                    border: 1px solid #e0e6ff;
+                    box-shadow: 0 2px 15px rgba(30, 111, 219, 0.08);
+                ">
+                    <p style="margin-bottom: 10px; color: #555; font-size: 16px;">Hola,</p>
+                    <p style="margin-bottom: 25px; color: #555; font-size: 16px; line-height: 1.6;">
+                        Tu contraseña ha sido <strong>restablecida exitosamente</strong> como administrador. Ya puedes iniciar sesión con tu nueva clave de acceso.
+                    </p>
+
+                    <div style="
+                        background: #ecfdf5;
+                        color: #059669;
+                        font-size: 16px;
+                        font-weight: 600;
+                        padding: 15px 20px;
+                        margin: 25px auto;
+                        border-radius: 8px;
+                        border: 2px solid #a7f3d0;
+                        max-width: 360px;
+                        box-shadow: 0 2px 10px rgba(5, 150, 105, 0.12);
+                        display: inline-block;
+                    ">
+                        👍 Contraseña actualizada correctamente
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="
+                    background: linear-gradient(135deg, #1e6fdb, #00a8ff);
+                    padding: 35px 20px;
+                    color: white;
+                    font-size: 14px;
+                    text-align: center;
+                    border-top: 1px solid rgba(255,255,255,0.2);
+                ">
+                    <div style="max-width: 500px; margin: 0 auto;">
+                        <p style="margin: 10px 0; font-weight: 500;">
+                            © ${new Date().getFullYear()} MATRICIANO. Todos los derechos reservados.
+                        </p>
+
+                        <div style="margin: 20px 0;">
+                            <a href="" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Sitio Web</a>
+                            <span style="opacity: 0.5; font-weight: 300;"> | </span>
+                            <a href="mailto:" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Soporte</a>
+                            <span style="opacity: 0.5; font-weight: 300;"> | </span>
+                            <a href="" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Privacidad</a>
+                        </div>
+
+                        <p style="margin: 15px 0 0; color: white; line-height: 1.5; font-size: 13px;">
+                            Este mensaje fue enviado a <strong style="color: white;">${email}</strong><br>
+                            Si no realizaste esta acción, por favor contáctanos de inmediato.
+                        </p>
+                    </div>
+                </div>
+            </div>
             `,
             attachments: [
                 {
