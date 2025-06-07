@@ -8,13 +8,15 @@ const { exec } = require('child_process');
 const ping = require('ping');
 const wifi = require('node-wifi');
 const twilio = require('twilio');
+const axios = require("axios");
 
 const app = express();
 const PORT = 3000;
+app.set('view engine', 'ejs');
 
 // Inicializa el módulo wifi
 wifi.init({
-    iface: null 
+    iface: null
 });
 
 // Configuración de la base de datos
@@ -74,6 +76,7 @@ const verificationTokens = {};
 // Middleware
 app.use(express.json());
 app.use(cors());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Ruta para servir el loginAdmin.html
@@ -172,51 +175,51 @@ app.get('/administradores', async (req, res) => {
 
 // Ruta para obtener datos de un usuario por ID
 app.get('/usuario/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-      const pool = await sql.connect(dbConfig);
-      const result = await pool.request()
-          .input('id', sql.Int, id)
-          .query("SELECT nombre, fecha_nacimiento, correo, telefono FROM usuarios WHERE id = @id");
+    const { id } = req.params;
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query("SELECT nombre, fecha_nacimiento, correo, telefono FROM usuarios WHERE id = @id");
 
-      if (result.recordset.length > 0) {
-          // Formatear la fecha para el frontend
-          const usuario = result.recordset[0];
-          usuario.fecha_nacimiento = new Date(usuario.fecha_nacimiento).toISOString();
-          res.json({ success: true, usuario: usuario });
-      } else {
-          res.json({ success: false, message: '⚠️ Usuario no encontrado.' });
-      }
-  } catch (error) {
-      console.error('❌ Error al obtener datos del usuario:', error);
-      res.status(500).json({ success: false, message: 'Error en el servidor' });
-  }
+        if (result.recordset.length > 0) {
+            // Formatear la fecha para el frontend
+            const usuario = result.recordset[0];
+            usuario.fecha_nacimiento = new Date(usuario.fecha_nacimiento).toISOString();
+            res.json({ success: true, usuario: usuario });
+        } else {
+            res.json({ success: false, message: '⚠️ Usuario no encontrado.' });
+        }
+    } catch (error) {
+        console.error('❌ Error al obtener datos del usuario:', error);
+        res.status(500).json({ success: false, message: 'Error en el servidor' });
+    }
 });
 
 // Ruta para actualizar datos de un usuario por ID
 app.put('/usuario/:id', async (req, res) => {
-  const { id } = req.params;
-  const { nombre, fecha_nacimiento, correo, telefono } = req.body;
-  
-  if (!nombre || !fecha_nacimiento || !correo || !telefono) {
-      return res.status(400).json({ success: false, message: "Todos los campos son requeridos." });
-  }
+    const { id } = req.params;
+    const { nombre, fecha_nacimiento, correo, telefono } = req.body;
 
-  try {
-      const pool = await sql.connect(dbConfig);
-      await pool.request()
-          .input('id', sql.Int, id)
-          .input('nombre', sql.NVarChar(100), nombre)
-          .input('fecha_nacimiento', sql.Date, fecha_nacimiento)
-          .input('correo', sql.NVarChar(100), correo)
-          .input('telefono', sql.NVarChar(20), telefono)
-          .query("UPDATE usuarios SET nombre = @nombre, fecha_nacimiento = @fecha_nacimiento, correo = @correo, telefono = @telefono WHERE id = @id");
+    if (!nombre || !fecha_nacimiento || !correo || !telefono) {
+        return res.status(400).json({ success: false, message: "Todos los campos son requeridos." });
+    }
 
-      res.json({ success: true, message: '✅ Usuario actualizado correctamente.' });
-  } catch (error) {
-      console.error('❌ Error al actualizar datos del usuario:', error);
-      res.status(500).json({ success: false, message: 'Error en el servidor' });
-  }
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('nombre', sql.NVarChar(100), nombre)
+            .input('fecha_nacimiento', sql.Date, fecha_nacimiento)
+            .input('correo', sql.NVarChar(100), correo)
+            .input('telefono', sql.NVarChar(20), telefono)
+            .query("UPDATE usuarios SET nombre = @nombre, fecha_nacimiento = @fecha_nacimiento, correo = @correo, telefono = @telefono WHERE id = @id");
+
+        res.json({ success: true, message: '✅ Usuario actualizado correctamente.' });
+    } catch (error) {
+        console.error('❌ Error al actualizar datos del usuario:', error);
+        res.status(500).json({ success: false, message: 'Error en el servidor' });
+    }
 });
 
 // Ruta para eliminar un usuario por ID
@@ -296,7 +299,7 @@ app.delete('/admin/:id', async (req, res) => {
 app.post('/send_verification_code', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'El correo es requerido.' });
-  
+
     try {
         const pool = await sql.connect(dbConfig);
         const result = await pool.request()
@@ -310,111 +313,24 @@ app.post('/send_verification_code', async (req, res) => {
         const token = generateVerificationToken();
         const expires = Date.now() + 5 * 60 * 1000;
         verificationTokens[email] = { token, expires };
+        const data = { token: token, expires: expires, email: process.env.GMAIL_USER }
+        const html = await new Promise((resolve, reject) => {
+            res.render(path.join(__dirname, 'public', 'templates', 'code.ejs'), { layout: false, data }, (err, renderedHtml) => {
+                err ? reject(err) : resolve(renderedHtml);
+            });
+        });
 
-        const mailOptions = {
+        const payload = {
             from: `"Soporte MATRICIANO" <${process.env.GMAIL_USER}>`,
             to: email,
-            subject: '🔐 Código de Verificación MATRICIANO - Cambio de Contraseña',
-            html: `
-            <div style="
-                font-family: 'Poppins', Arial, sans-serif;
-                max-width: 600px;
-                margin: 0 auto;
-                background: #f8fafc;
-                padding: 0;
-                text-align: center;
-                border-radius: 12px;
-                overflow: hidden;
-                box-shadow: 0 5px 25px rgba(0,0,0,0.1);
-            ">
-                <!-- Encabezado -->
-                <div style="
-                    background: linear-gradient(135deg, #1e6fdb, #00a8ff);
-                    padding: 40px 20px;
-                    color: white;
-                    border-bottom: 1px solid rgba(255,255,255,0.2);
-                ">
-                    <img src="cid:headerImage" alt="Logo MATRICIANO" style="width:95px; height:95px; margin: 0 auto 15px; display: block;">
-                    <h1 style="margin: 10px 0 5px; font-size: 26px; font-weight: 600;">Cambio de Contraseña</h1>
-                    <p style="margin: 0; opacity: 0.9; font-size: 15px;">Protegiendo tu acceso</p>
-                </div>
-                
-                <!-- Cuerpo -->
-                <div style="
-                    background: white;
-                    padding: 40px 30px;
-                    margin: 20px;
-                    border-radius: 10px;
-                    border: 1px solid #e0e6ff;
-                    box-shadow: 0 2px 15px rgba(30, 111, 219, 0.08);
-                ">
-                    <p style="margin-bottom: 10px; color: #555; font-size: 16px;">Estimado usuario,</p>
-                    <p style="margin-bottom: 25px; color: #555; font-size: 16px; line-height: 1.6;">
-                        Hemos recibido una solicitud para restablecer tu contraseña. Utiliza este código único:
-                    </p>
-                    
-                    <!-- Código de verificación -->
-                    <div style="
-                        background: #f5faff;
-                        color: #1e6fdb;
-                        font-size: 28px;
-                        font-weight: 700;
-                        padding: 20px;
-                        margin: 25px auto;
-                        border-radius: 8px;
-                        border: 2px solid #d6e7ff;
-                        letter-spacing: 3px;
-                        max-width: 280px;
-                        box-shadow: 0 3px 12px rgba(30, 111, 219, 0.12);
-                    ">
-                        ${token}
-                    </div>
+            subject: "🔐 Código de Verificación MATRICIANO - Cambio de Contraseña",
+            html_part: html,
 
-                    <!-- Alerta -->
-                    <div style="
-                        background: #fff8e6;
-                        color: #d97706;
-                        padding: 15px;
-                        border-radius: 8px;
-                        font-size: 15px;
-                        margin: 30px 0;
-                        border: 1px dashed #f59e0b;
-                        display: inline-block;
-                    ">
-                        ⏱️ Válido por 5 minutos | No compartas este código
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div style="
-                    background: linear-gradient(135deg, #1e6fdb, #00a8ff);
-                    padding: 35px 20px;
-                    color: white;
-                    font-size: 14px;
-                    text-align: center;
-                    border-top: 1px solid rgba(255,255,255,0.2);
-                ">
-                    <div style="max-width: 500px; margin: 0 auto;">
-                        <p style="margin: 10px 0; font-weight: 500;">
-                            © ${new Date().getFullYear()} MATRICIANO. Todos los derechos reservados.
-                        </p>
-
-                        <div style="margin: 20px 0;">
-                            <a href="" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Sitio Web</a>
-                            <span style="opacity: 0.5; font-weight: 300;"> | </span>
-                            <a href="mailto:" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Soporte</a>
-                            <span style="opacity: 0.5; font-weight: 300;"> | </span>
-                            <a href="" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Privacidad</a>
-                        </div>
-
-                        <p style="margin: 15px 0 0; color: white; line-height: 1.5; font-size: 13px;">
-                            Este mensaje fue enviado a <strong style="color: white;">${email}</strong><br>
-                            Por razones de seguridad, no reenvíes este correo.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            `,
+            text_part_auto: true,
+            headers: {
+                "X-CustomHeader": "Promolíder"
+            },
+            smtp_tags: ["registro"],
             attachments: [
                 {
                     filename: 'logo_matriciano.png',
@@ -423,14 +339,17 @@ app.post('/send_verification_code', async (req, res) => {
                 }
             ]
         };
-
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.error('Error al enviar el correo:', error);
-                return res.status(500).json({ error: 'Error al enviar el correo de verificación.' });
+        const response = await axios.post(
+            "https://promolider3.ipzmarketing.com/api/v1/send_emails",
+            payload,
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-auth-token": "VYNWtGnv3mG_xVLY7scoGknetZQzkscuRtpxYfhY"
+                }
             }
-            res.json({ message: 'Código de verificación enviado al correo.' });
-        });
+        );
+        res.json({ message: 'Código de verificación enviado al correo.' });
     } catch (err) {
         console.error('Error en /send_verification_code:', err);
         res.status(500).json({ error: 'Error interno del servidor.' });
@@ -473,95 +392,17 @@ app.post('/update_password', async (req, res) => {
 
         delete verificationTokens[email];
 
+        const data = {};
+        const html = await new Promise((resolve, reject) => {
+            res.render(path.join(__dirname, 'public', 'templates', 'confirm.ejs'), { layout: false, data }, (err, renderedHtml) => {
+                err ? reject(err) : resolve(renderedHtml);
+            });
+        });
         const confirmationMailOptions = {
             from: `"Soporte MATRICIANO" <${process.env.GMAIL_USER}>`,
             to: email,
             subject: 'Contraseña reestablecida exitosamente',
-            html: `
-            <div style="
-                font-family: 'Poppins', Arial, sans-serif;
-                max-width: 600px;
-                margin: 0 auto;
-                background: #f8fafc;
-                padding: 0;
-                text-align: center;
-                border-radius: 12px;
-                overflow: hidden;
-                box-shadow: 0 5px 25px rgba(0,0,0,0.1);
-            ">
-                <!-- Encabezado -->
-                <div style="
-                    background: linear-gradient(135deg, #1e6fdb, #00a8ff);
-                    padding: 40px 20px;
-                    color: white;
-                    border-bottom: 1px solid rgba(255,255,255,0.2);
-                ">
-                    <img src="cid:headerImage" alt="Logo MATRICIANO" style="width:95px; height:95px; margin: 0 auto 15px; display: block;">
-                    <h1 style="margin: 10px 0 5px; font-size: 26px; font-weight: 600;">Contraseña Restablecida</h1>
-                    <p style="margin: 0; opacity: 0.9; font-size: 15px;">Has actualizado tu acceso</p>
-                </div>
-                
-                <!-- Cuerpo -->
-                <div style="
-                    background: white;
-                    padding: 40px 30px;
-                    margin: 20px;
-                    border-radius: 10px;
-                    border: 1px solid #e0e6ff;
-                    box-shadow: 0 2px 15px rgba(30, 111, 219, 0.08);
-                ">
-                    <p style="margin-bottom: 10px; color: #555; font-size: 16px;">Hola,</p>
-                    <p style="margin-bottom: 25px; color: #555; font-size: 16px; line-height: 1.6;">
-                        Tu contraseña ha sido <strong>restablecida exitosamente</strong> como administrador. Ya puedes iniciar sesión con tu nueva clave de acceso.
-                    </p>
-
-                    <div style="
-                        background: #ecfdf5;
-                        color: #059669;
-                        font-size: 16px;
-                        font-weight: 600;
-                        padding: 15px 20px;
-                        margin: 25px auto;
-                        border-radius: 8px;
-                        border: 2px solid #a7f3d0;
-                        max-width: 360px;
-                        box-shadow: 0 2px 10px rgba(5, 150, 105, 0.12);
-                        display: inline-block;
-                    ">
-                        👍 Contraseña actualizada correctamente
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div style="
-                    background: linear-gradient(135deg, #1e6fdb, #00a8ff);
-                    padding: 35px 20px;
-                    color: white;
-                    font-size: 14px;
-                    text-align: center;
-                    border-top: 1px solid rgba(255,255,255,0.2);
-                ">
-                    <div style="max-width: 500px; margin: 0 auto;">
-                        <p style="margin: 10px 0; font-weight: 500;">
-                            © ${new Date().getFullYear()} MATRICIANO. Todos los derechos reservados.
-                        </p>
-
-                        <div style="margin: 20px 0;">
-                            <a href="" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Sitio Web</a>
-                            <span style="opacity: 0.5; font-weight: 300;"> | </span>
-                            <a href="mailto:" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Soporte</a>
-                            <span style="opacity: 0.5; font-weight: 300;"> | </span>
-                            <a href="" style="color: white; text-decoration: none; margin: 0 12px; font-weight: 400;">Privacidad</a>
-                        </div>
-
-                        <p style="margin: 15px 0 0; color: white; line-height: 1.5; font-size: 13px;">
-                            Este mensaje fue enviado a <strong style="color: white;">${email}</strong><br>
-                            Si no realizaste esta acción, por favor contáctanos de inmediato.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            `,
+            html: html,
             attachments: [
                 {
                     filename: './img/fondo_circulo_logo.png',
@@ -591,13 +432,13 @@ function formatNotificationTime(date) {
     const now = new Date();
     const diff = now - new Date(date);
     const minutes = Math.floor(diff / 60000);
-    
+
     if (minutes < 1) return 'Ahora mismo';
     if (minutes < 60) return `Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}`;
-    
+
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `Hace ${hours} hora${hours !== 1 ? 's' : ''}`;
-    
+
     return new Date(date).toLocaleDateString('es-ES', {
         day: 'numeric',
         month: 'short'
@@ -607,10 +448,10 @@ function formatNotificationTime(date) {
 async function initializeAdminNotifications(adminName) {
     if (!notificationsStore[adminName]) {
         notificationsStore[adminName] = [];
-        
+
         const birthdayNotifications = await getBirthdayNotifications();
         const now = new Date().toISOString();
-        
+
         notificationsStore[adminName].push(
             {
                 id: `welcome-${Date.now()}`,
@@ -640,9 +481,9 @@ async function initializeAdminNotifications(adminName) {
 app.get('/api/notifications', async (req, res) => {
     try {
         const adminName = req.query.adminName || 'Administrador';
-        
+
         await initializeAdminNotifications(adminName);
-        
+
         res.json(notificationsStore[adminName].filter(n => !n.read)
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .slice(0, 5));
@@ -655,9 +496,9 @@ app.get('/api/notifications', async (req, res) => {
 app.get('/api/all-notifications', async (req, res) => {
     try {
         const adminName = req.query.adminName || 'Administrador';
-        
+
         await initializeAdminNotifications(adminName);
-        
+
         res.json([...notificationsStore[adminName]]
             .sort((a, b) => new Date(b.date) - new Date(a.date)));
     } catch (err) {
@@ -669,7 +510,7 @@ app.get('/api/all-notifications', async (req, res) => {
 app.post('/api/notifications/mark-all-read', (req, res) => {
     try {
         const adminName = req.query.adminName || 'Administrador';
-        
+
         if (notificationsStore[adminName]) {
             notificationsStore[adminName].forEach(n => n.read = true);
         }
@@ -684,7 +525,7 @@ app.delete('/api/notifications/:id', (req, res) => {
     try {
         const adminName = req.query.adminName || 'Administrador';
         const { id } = req.params;
-        
+
         if (notificationsStore[adminName]) {
             const index = notificationsStore[adminName].findIndex(n => n.id === id);
             if (index !== -1) {
@@ -728,7 +569,7 @@ async function getBirthdayNotifications() {
 
 // Endpoint para obtener el conteo de dispositivos
 app.get('/api/devices', (req, res) => {
-    exec('python scanner.py', (error, stdout, stderr) => {        
+    exec('python scanner.py', (error, stdout, stderr) => {
         if (error) {
             console.error('Error ejecutando Python:', error);
             return res.status(500).json({ error: 'Error al escanear la red' });
@@ -842,7 +683,7 @@ async function evaluateConnection(host, attempts) {
 
 app.get('/check-connection', async (req, res) => {
     try {
-        const host = '8.8.8.8'; 
+        const host = '8.8.8.8';
         const status = await evaluateConnection(host, 5); // Realizar 5 pings
         res.json(status);
     } catch (error) {
@@ -856,7 +697,7 @@ app.get('/network-info', async (req, res) => {
     try {
         const currentNetwork = await wifi.getCurrentConnections();
         if (currentNetwork.length > 0) {
-            const { ssid, security } = currentNetwork[0]; 
+            const { ssid, security } = currentNetwork[0];
             res.json({
                 ssid: ssid,
                 security: security || 'Desconocido',
@@ -883,7 +724,7 @@ app.get('/channel-recommendation', async (req, res) => {
         });
         const congestedChannel = Object.keys(channelCounts).reduce((a, b) => channelCounts[a] > channelCounts[b] ? a : b);
         let recommendedChannel = parseInt(congestedChannel);
-        recommendedChannel = recommendedChannel + 1 <= 36 ? recommendedChannel + 1 : 36; 
+        recommendedChannel = recommendedChannel + 1 <= 36 ? recommendedChannel + 1 : 36;
         res.json({
             recommendedChannel: recommendedChannel
         });
@@ -925,7 +766,7 @@ app.get('/api/dispositivosEncontrados', (req, res) => {
 app.post('/api/send-birthday-notification', async (req, res) => {
     try {
         const { userName } = req.body;
-        
+
         if (!userName) {
             return res.status(400).json({ error: 'Nombre de usuario no proporcionado' });
         }
@@ -935,24 +776,24 @@ app.post('/api/send-birthday-notification', async (req, res) => {
         const result = await pool.request()
             .input('nombre', sql.NVarChar, userName)
             .query('SELECT telefono FROM usuarios WHERE nombre = @nombre');
-        
+
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
         const user = result.recordset[0];
-        
+
         // 2. Formatear número (agregar +51 si no lo tiene)
         let phoneNumber = user.telefono.trim();
         phoneNumber = phoneNumber.replace(/\D/g, '');
-        
+
         // Validar que sea un número peruano válido (9 dígitos)
         if (phoneNumber.length !== 9 || !phoneNumber.startsWith('9')) {
             return res.status(400).json({ error: 'Número de teléfono inválido. Debe tener 9 dígitos y comenzar con 9' });
         }
-        
+
         const formattedNumber = `+51${phoneNumber}`;
-        
+
         // 3. Enviar mensaje por WhatsApp
         const message = await client.messages.create({
             body: `🎉 ¡Feliz cumpleaños ${userName}! 🎂\n\nQue tengas un día maravilloso lleno de alegría y bendiciones. ¡Disfruta tu día especial! 🥳`,
@@ -960,7 +801,7 @@ app.post('/api/send-birthday-notification', async (req, res) => {
             to: `whatsapp:${formattedNumber}`
         });
 
-        res.status(200).json({ 
+        res.status(200).json({
             success: true,
             message: `Mensaje enviado a ${userName}`,
             phone: formattedNumber,
@@ -969,13 +810,13 @@ app.post('/api/send-birthday-notification', async (req, res) => {
 
     } catch (err) {
         console.error('Error al enviar notificación:', err);
-        
+
         let errorMessage = 'Error al enviar notificación';
         if (err.message.includes('Invalid phone number')) {
             errorMessage = 'Número de teléfono inválido. Verifique el formato.';
         }
 
-        res.status(500).json({ 
+        res.status(500).json({
             error: errorMessage,
             details: err.message
         });
@@ -1061,13 +902,13 @@ app.get('/get_mac', (req, res) => {
 
 // Ver el tipo de seguridad de la red WiFi
 app.get('/tipoSeguridadRed', async (req, res) => {
-  try {
-    const connections = await wifi.getCurrentConnections();
-    const seguridad = connections[0]?.security || 'Desconocido';
-    res.json({ seguridad });
-  } catch (err) {
-    res.json({ seguridad: 'Error al obtener' });
-  }
+    try {
+        const connections = await wifi.getCurrentConnections();
+        const seguridad = connections[0]?.security || 'Desconocido';
+        res.json({ seguridad });
+    } catch (err) {
+        res.json({ seguridad: 'Error al obtener' });
+    }
 });
 
 // Obtener el canal y frecuencia de la red WiFi
