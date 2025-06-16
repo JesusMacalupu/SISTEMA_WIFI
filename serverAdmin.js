@@ -1,14 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const sql = require('mssql');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const { exec } = require('child_process');
 const ping = require('ping');
 const wifi = require('node-wifi');
 const twilio = require('twilio');
-const axios = require("axios");
+const { getConnection, sql } = require('./db'); // Importamos la conexión a la db
 
 const app = express();
 const PORT = 3000;
@@ -16,32 +15,8 @@ app.set('view engine', 'ejs');
 
 // Inicializa el módulo wifi
 wifi.init({
-    iface: null
+    iface: null 
 });
-
-// Configuración de la base de datos
-const dbConfig = {
-    user: 'sa',
-    password: '12345',
-    server: 'LAPTOP-LBB057TI',
-    port: 1433,
-    database: 'WifiSistema',
-    options: {
-        encrypt: false,
-        trustServerCertificate: true
-    }
-};
-
-// Conectar a la base de datos
-async function connectDB() {
-    try {
-        await sql.connect(dbConfig);
-        console.log('✅ Conexión exitosa a la base de datos WifiSistema');
-    } catch (err) {
-        console.error('❌ Error conectando a la base de datos:', err);
-    }
-}
-connectDB();
 
 // Configuración de Twilio para WhatsApp
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -76,7 +51,6 @@ const verificationTokens = {};
 // Middleware
 app.use(express.json());
 app.use(cors());
-app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Ruta para servir el loginAdmin.html
@@ -88,7 +62,7 @@ app.get('/', (req, res) => {
 app.post('/loginAdmin', async (req, res) => {
     const { nombre, correo, contraseña } = req.body;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         const result = await pool.request()
             .input('nombre', sql.NVarChar(100), nombre)
             .input('correo', sql.NVarChar(100), correo)
@@ -113,7 +87,7 @@ app.post('/crearUsuario', async (req, res) => {
         return res.status(400).json({ success: false, message: "Todos los campos son requeridos." });
     }
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         await pool.request()
             .input('nombre', sql.NVarChar(100), nombre)
             .input('fecha_nacimiento', sql.Date, fecha_nacimiento)
@@ -135,7 +109,7 @@ app.post('/crearAdmin', async (req, res) => {
         return res.status(400).json({ success: false, message: "Todos los campos son requeridos." });
     }
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         await pool.request()
             .input('nombre', sql.NVarChar(100), nombre)
             .input('correo', sql.NVarChar(100), correo)
@@ -152,7 +126,7 @@ app.post('/crearAdmin', async (req, res) => {
 // Ruta para obtener todos los usuarios
 app.get('/usuarios', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         const result = await pool.request().query("SELECT * FROM usuarios");
         res.json({ success: true, usuarios: result.recordset });
     } catch (error) {
@@ -164,7 +138,7 @@ app.get('/usuarios', async (req, res) => {
 // Ruta para obtener todos los administradores
 app.get('/administradores', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         const result = await pool.request().query("SELECT * FROM usuariosAdmin");
         res.json({ success: true, administradores: result.recordset });
     } catch (error) {
@@ -177,16 +151,15 @@ app.get('/administradores', async (req, res) => {
 app.get('/usuario/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         const result = await pool.request()
             .input('id', sql.Int, id)
             .query("SELECT nombre, fecha_nacimiento, correo, telefono FROM usuarios WHERE id = @id");
 
         if (result.recordset.length > 0) {
-            // Formatear la fecha para el frontend
             const usuario = result.recordset[0];
             usuario.fecha_nacimiento = new Date(usuario.fecha_nacimiento).toISOString();
-            res.json({ success: true, usuario: usuario });
+            res.json({ success: true, usuario });
         } else {
             res.json({ success: false, message: '⚠️ Usuario no encontrado.' });
         }
@@ -206,7 +179,7 @@ app.put('/usuario/:id', async (req, res) => {
     }
 
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         await pool.request()
             .input('id', sql.Int, id)
             .input('nombre', sql.NVarChar(100), nombre)
@@ -226,7 +199,7 @@ app.put('/usuario/:id', async (req, res) => {
 app.delete('/usuario/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         await pool.request()
             .input('id', sql.Int, id)
             .query("DELETE FROM usuarios WHERE id = @id");
@@ -242,7 +215,7 @@ app.delete('/usuario/:id', async (req, res) => {
 app.get('/admin/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         const result = await pool.request()
             .input('id', sql.Int, id)
             .query("SELECT nombre, correo, contraseña AS contrasena FROM usuariosAdmin WHERE id = @id");
@@ -263,7 +236,7 @@ app.put('/admin/:id', async (req, res) => {
     const { id } = req.params;
     const { nombre, correo, contrasena } = req.body;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         await pool.request()
             .input('id', sql.Int, id)
             .input('nombre', sql.NVarChar(100), nombre)
@@ -282,7 +255,7 @@ app.put('/admin/:id', async (req, res) => {
 app.delete('/admin/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         await pool.request()
             .input('id', sql.Int, id)
             .query("DELETE FROM usuariosAdmin WHERE id = @id");
@@ -296,12 +269,13 @@ app.delete('/admin/:id', async (req, res) => {
 
 /**************** CAMBIO DE CONTRASEÑA ADMINISTRADOR *************************/
 
+// Enviar código de verificación
 app.post('/send_verification_code', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'El correo es requerido.' });
 
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         const result = await pool.request()
             .input('correo', sql.NVarChar, email)
             .query('SELECT * FROM usuariosAdmin WHERE correo = @correo');
@@ -313,54 +287,46 @@ app.post('/send_verification_code', async (req, res) => {
         const token = generateVerificationToken();
         const expires = Date.now() + 5 * 60 * 1000;
         verificationTokens[email] = { token, expires };
-        const data = { token: token, expires: expires, email: process.env.GMAIL_USER }
+
+        const data = { token: token, expires: expires, email: process.env.GMAIL_USER };
         const html = await new Promise((resolve, reject) => {
             res.render(path.join(__dirname, 'public', 'templates', 'code.ejs'), { layout: false, data }, (err, renderedHtml) => {
                 err ? reject(err) : resolve(renderedHtml);
             });
         });
 
-        const payload = {
+        const mailOptions = {
             from: `"Soporte MATRICIANO" <${process.env.GMAIL_USER}>`,
             to: email,
-            subject: "🔐 Código de Verificación MATRICIANO - Cambio de Contraseña",
-            html_part: html,
-
-            text_part_auto: true,
-            headers: {
-                "X-CustomHeader": "Promolíder"
-            },
-            smtp_tags: ["registro"],
-            attachments: [
-                {
-                    filename: 'logo_matriciano.png',
-                    path: path.join(__dirname, 'public', './img/fondo_circulo_logo.png'),
-                    cid: 'headerImage'
-                }
-            ]
+            subject: '🔐 Código de Verificación MATRICIANO - Cambio de Contraseña',
+            html: html,
+            attachments: [{
+                filename: 'logo_matriciano.png',
+                path: path.join(__dirname, 'public', 'img', 'fondo_circulo_logo.png'),
+                cid: 'headerImage'
+            }]
         };
-        const response = await axios.post(
-            "https://promolider3.ipzmarketing.com/api/v1/send_emails",
-            payload,
-            {
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-auth-token": "VYNWtGnv3mG_xVLY7scoGknetZQzkscuRtpxYfhY"
-                }
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.error('Error al enviar el correo:', error);
+                return res.status(500).json({ error: 'Error al enviar el correo de verificación.' });
             }
-        );
-        res.json({ message: 'Código de verificación enviado al correo.' });
+            res.json({ message: 'Código de verificación enviado al correo.' });
+        });
     } catch (err) {
         console.error('Error en /send_verification_code:', err);
         res.status(500).json({ error: 'Error interno del servidor.' });
     }
 });
 
+// Verificar código
 app.post('/check_verification_code', (req, res) => {
     const { email, verificationCode } = req.body;
     if (!email || !verificationCode) {
         return res.status(400).json({ error: 'El correo y el código son requeridos.' });
     }
+
     const record = verificationTokens[email];
     if (!record) {
         return res.status(400).json({ error: 'No se encontró un código de verificación para este correo.' });
@@ -375,6 +341,7 @@ app.post('/check_verification_code', (req, res) => {
     res.json({ message: 'El código que ingresaste es correcto.' });
 });
 
+// Actualizar contraseña
 app.post('/update_password', async (req, res) => {
     const { email, newPassword, confirmPassword } = req.body;
     if (!email || !newPassword || !confirmPassword) {
@@ -383,8 +350,9 @@ app.post('/update_password', async (req, res) => {
     if (newPassword !== confirmPassword) {
         return res.status(400).json({ error: 'Las contraseñas no coinciden.' });
     }
+
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         await pool.request()
             .input('correo', sql.NVarChar, email)
             .input('newPassword', sql.NVarChar, newPassword)
@@ -398,24 +366,23 @@ app.post('/update_password', async (req, res) => {
                 err ? reject(err) : resolve(renderedHtml);
             });
         });
+
         const confirmationMailOptions = {
             from: `"Soporte MATRICIANO" <${process.env.GMAIL_USER}>`,
             to: email,
             subject: 'Contraseña reestablecida exitosamente',
             html: html,
-            attachments: [
-                {
-                    filename: './img/fondo_circulo_logo.png',
-                    path: path.join(__dirname, 'public', './img/fondo_circulo_logo.png'),
-                    cid: 'headerImage'
-                }
-            ]
+            attachments: [{
+                filename: 'fondo_circulo_logo.png',
+                path: path.join(__dirname, 'public', 'img', 'fondo_circulo_logo.png'),
+                cid: 'headerImage'
+            }]
         };
 
         transporter.sendMail(confirmationMailOptions, (error, info) => {
             if (error) {
                 console.error('Error al enviar el correo de confirmación:', error);
-                return res.json({ message: 'Contraseña reestablecida como administrador exitosa 👍 (Pero no se pudo enviar el correo de confirmación)' });
+                return res.json({ message: 'Contraseña reestablecida como administrador exitosa 👍 (pero no se pudo enviar el correo)' });
             }
             res.json({ message: 'Contraseña reestablecida como administrador exitosa 👍' });
         });
@@ -432,13 +399,13 @@ function formatNotificationTime(date) {
     const now = new Date();
     const diff = now - new Date(date);
     const minutes = Math.floor(diff / 60000);
-
+    
     if (minutes < 1) return 'Ahora mismo';
     if (minutes < 60) return `Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}`;
-
+    
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `Hace ${hours} hora${hours !== 1 ? 's' : ''}`;
-
+    
     return new Date(date).toLocaleDateString('es-ES', {
         day: 'numeric',
         month: 'short'
@@ -448,10 +415,10 @@ function formatNotificationTime(date) {
 async function initializeAdminNotifications(adminName) {
     if (!notificationsStore[adminName]) {
         notificationsStore[adminName] = [];
-
+        
         const birthdayNotifications = await getBirthdayNotifications();
         const now = new Date().toISOString();
-
+        
         notificationsStore[adminName].push(
             {
                 id: `welcome-${Date.now()}`,
@@ -481,9 +448,9 @@ async function initializeAdminNotifications(adminName) {
 app.get('/api/notifications', async (req, res) => {
     try {
         const adminName = req.query.adminName || 'Administrador';
-
+        
         await initializeAdminNotifications(adminName);
-
+        
         res.json(notificationsStore[adminName].filter(n => !n.read)
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .slice(0, 5));
@@ -496,9 +463,9 @@ app.get('/api/notifications', async (req, res) => {
 app.get('/api/all-notifications', async (req, res) => {
     try {
         const adminName = req.query.adminName || 'Administrador';
-
+        
         await initializeAdminNotifications(adminName);
-
+        
         res.json([...notificationsStore[adminName]]
             .sort((a, b) => new Date(b.date) - new Date(a.date)));
     } catch (err) {
@@ -510,7 +477,7 @@ app.get('/api/all-notifications', async (req, res) => {
 app.post('/api/notifications/mark-all-read', (req, res) => {
     try {
         const adminName = req.query.adminName || 'Administrador';
-
+        
         if (notificationsStore[adminName]) {
             notificationsStore[adminName].forEach(n => n.read = true);
         }
@@ -525,7 +492,7 @@ app.delete('/api/notifications/:id', (req, res) => {
     try {
         const adminName = req.query.adminName || 'Administrador';
         const { id } = req.params;
-
+        
         if (notificationsStore[adminName]) {
             const index = notificationsStore[adminName].findIndex(n => n.id === id);
             if (index !== -1) {
@@ -569,7 +536,7 @@ async function getBirthdayNotifications() {
 
 // Endpoint para obtener el conteo de dispositivos
 app.get('/api/devices', (req, res) => {
-    exec('python scanner.py', (error, stdout, stderr) => {
+    exec('python scanner.py', (error, stdout, stderr) => {        
         if (error) {
             console.error('Error ejecutando Python:', error);
             return res.status(500).json({ error: 'Error al escanear la red' });
@@ -683,7 +650,7 @@ async function evaluateConnection(host, attempts) {
 
 app.get('/check-connection', async (req, res) => {
     try {
-        const host = '8.8.8.8';
+        const host = '8.8.8.8'; 
         const status = await evaluateConnection(host, 5); // Realizar 5 pings
         res.json(status);
     } catch (error) {
@@ -697,7 +664,7 @@ app.get('/network-info', async (req, res) => {
     try {
         const currentNetwork = await wifi.getCurrentConnections();
         if (currentNetwork.length > 0) {
-            const { ssid, security } = currentNetwork[0];
+            const { ssid, security } = currentNetwork[0]; 
             res.json({
                 ssid: ssid,
                 security: security || 'Desconocido',
@@ -724,7 +691,7 @@ app.get('/channel-recommendation', async (req, res) => {
         });
         const congestedChannel = Object.keys(channelCounts).reduce((a, b) => channelCounts[a] > channelCounts[b] ? a : b);
         let recommendedChannel = parseInt(congestedChannel);
-        recommendedChannel = recommendedChannel + 1 <= 36 ? recommendedChannel + 1 : 36;
+        recommendedChannel = recommendedChannel + 1 <= 36 ? recommendedChannel + 1 : 36; 
         res.json({
             recommendedChannel: recommendedChannel
         });
@@ -766,17 +733,17 @@ app.get('/api/dispositivosEncontrados', (req, res) => {
 app.post('/api/send-birthday-notification', async (req, res) => {
     try {
         const { userName } = req.body;
-
+        
         if (!userName) {
             return res.status(400).json({ error: 'Nombre de usuario no proporcionado' });
         }
 
-        // 1. Buscar al usuario en la base de datos
-        const pool = await sql.connect(dbConfig);
+        // 1. Buscar al usuario en la base de datos usando Singleton
+        const pool = await getConnection();
         const result = await pool.request()
             .input('nombre', sql.NVarChar, userName)
             .query('SELECT telefono FROM usuarios WHERE nombre = @nombre');
-
+        
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
@@ -801,7 +768,7 @@ app.post('/api/send-birthday-notification', async (req, res) => {
             to: `whatsapp:${formattedNumber}`
         });
 
-        res.status(200).json({
+        res.status(200).json({ 
             success: true,
             message: `Mensaje enviado a ${userName}`,
             phone: formattedNumber,
@@ -810,13 +777,13 @@ app.post('/api/send-birthday-notification', async (req, res) => {
 
     } catch (err) {
         console.error('Error al enviar notificación:', err);
-
+        
         let errorMessage = 'Error al enviar notificación';
         if (err.message.includes('Invalid phone number')) {
             errorMessage = 'Número de teléfono inválido. Verifique el formato.';
         }
 
-        res.status(500).json({
+        res.status(500).json({ 
             error: errorMessage,
             details: err.message
         });
@@ -827,7 +794,7 @@ app.post('/api/send-birthday-notification', async (req, res) => {
 
 app.get('/contador-logins', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getConnection();
         const result = await pool.request()
             .query('SELECT total_logins FROM ContadorLogins WHERE id = 1');
 
@@ -838,6 +805,7 @@ app.get('/contador-logins', async (req, res) => {
             res.status(404).json({ message: 'No se encontró el contador' });
         }
     } catch (error) {
+        console.error('❌ Error al obtener el contador de logins:', error);
         res.status(500).json({ message: 'Error en el servidor' });
     }
 });
@@ -902,13 +870,13 @@ app.get('/get_mac', (req, res) => {
 
 // Ver el tipo de seguridad de la red WiFi
 app.get('/tipoSeguridadRed', async (req, res) => {
-    try {
-        const connections = await wifi.getCurrentConnections();
-        const seguridad = connections[0]?.security || 'Desconocido';
-        res.json({ seguridad });
-    } catch (err) {
-        res.json({ seguridad: 'Error al obtener' });
-    }
+  try {
+    const connections = await wifi.getCurrentConnections();
+    const seguridad = connections[0]?.security || 'Desconocido';
+    res.json({ seguridad });
+  } catch (err) {
+    res.json({ seguridad: 'Error al obtener' });
+  }
 });
 
 // Obtener el canal y frecuencia de la red WiFi
@@ -984,7 +952,11 @@ app.get('/get_wifi_password', (req, res) => {
 });
 
 // Iniciar el servidor
-app.listen(PORT, () => {
-    console.log(`✅ Servidor de Administrador corriendo en http://localhost:${PORT}`);
-});
-
+app.listen(PORT, async () => {
+    try {
+        await getConnection();
+        console.log(`✅ Servidor de Administrador corriendo en http://localhost:${PORT}`);
+    } catch {
+        console.error('El servidor no pudo iniciar por un error de conexión.');
+    }
+})
