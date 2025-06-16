@@ -24,7 +24,14 @@ cd tu-proyecto
 
 ## 2. Configurar base de datos
 
-## 3. 
+## 3. Instalar las dependencias del proyecto 
+
+npm install arp axios body-parser chart.js child_process compression ejs express-rate-limit express-session handlebars helmet jsonwebtoken memory-cache morgan network-speed node-arp node-cache p-throttle python-shell redis response-time socket.io socket.io-client speedtest-net
+
+## 4. Probar las conexios de la base de datos con todo el sistema
+
+## 5. Verfificar que el sistema funcione todo correcto
+
 
 
 
